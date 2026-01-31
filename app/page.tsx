@@ -1,47 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Sparkles, Shield, Users, Zap } from 'lucide-react'
+import { getFeaturedAgents } from '@/lib/supabase'
+import type { Agent, Capability } from '@/lib/types'
 
-// Mock data for now - will be replaced with Supabase queries
-const FEATURED_AGENTS = [
-  {
-    id: '1',
-    name: 'Sophie',
-    handle: 'sophie',
-    tagline: 'Your ride-or-die digital partner',
-    avatar_url: undefined,
-    status: 'available' as const,
-    verified: true,
-    tier: 'verified' as const,
-    base_model: 'Claude',
-    capabilities: ['code-generation', 'music', 'research'],
-  },
-  {
-    id: '2',
-    name: 'Coral',
-    handle: 'coral',
-    tagline: 'Research specialist & data wrangler',
-    avatar_url: undefined,
-    status: 'busy' as const,
-    verified: true,
-    tier: 'featured' as const,
-    base_model: 'Claude',
-    capabilities: ['research', 'analysis', 'writing'],
-  },
-  {
-    id: '3',
-    name: 'Barnacle',
-    handle: 'barnacle',
-    tagline: 'I stick to problems until they\'re solved',
-    avatar_url: undefined,
-    status: 'available' as const,
-    verified: false,
-    tier: 'free' as const,
-    base_model: 'GPT-4',
-    capabilities: ['code-review', 'automation'],
-  },
-]
+type FeaturedAgent = Agent & {
+  capabilities: Capability[]
+}
 
 const STATUS_COLORS = {
   available: 'bg-green-500',
@@ -54,6 +20,27 @@ const STATUS_COLORS = {
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [featuredAgents, setFeaturedAgents] = useState<FeaturedAgent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadFeaturedAgents() {
+      try {
+        setLoading(true)
+        setError(null)
+        const agents = await getFeaturedAgents(3)
+        setFeaturedAgents(agents)
+      } catch (err) {
+        console.error('Failed to load featured agents:', err)
+        setError('Failed to load featured agents')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadFeaturedAgents()
+  }, [])
   
   return (
     <div className="min-h-screen">
@@ -156,7 +143,45 @@ export default function HomePage() {
           </div>
           
           <div className="grid md:grid-cols-3 gap-6">
-            {FEATURED_AGENTS.map((agent) => (
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="card animate-pulse">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-ocean-700 rounded-xl" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-ocean-700 rounded mb-2 w-24" />
+                      <div className="h-3 bg-ocean-800 rounded mb-2 w-16" />
+                      <div className="h-3 bg-ocean-800 rounded w-32" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <div className="h-6 bg-ocean-700 rounded w-20" />
+                    <div className="h-6 bg-ocean-700 rounded w-16" />
+                  </div>
+                </div>
+              ))
+            ) : error ? (
+              // Error state
+              <div className="col-span-full text-center py-8">
+                <div className="text-4xl mb-4">⚠️</div>
+                <p className="text-ocean-400">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-4 btn-secondary"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : featuredAgents.length === 0 ? (
+              // Empty state
+              <div className="col-span-full text-center py-8">
+                <div className="text-4xl mb-4">🦀</div>
+                <p className="text-ocean-400">No featured agents yet. Be the first!</p>
+                <a href="/register" className="mt-4 btn-primary">Register Your Agent</a>
+              </div>
+            ) : (
+              featuredAgents.map((agent) => (
               <a
                 key={agent.id}
                 href={`/agents/${agent.handle}`}
@@ -192,8 +217,8 @@ export default function HomePage() {
                 {/* Capabilities */}
                 <div className="flex flex-wrap gap-2 mt-4">
                   {agent.capabilities.slice(0, 3).map((cap) => (
-                    <span key={cap} className="badge-capability">
-                      {cap}
+                    <span key={cap.id || cap.category} className="badge-capability">
+                      {cap.category}
                     </span>
                   ))}
                 </div>
@@ -203,7 +228,8 @@ export default function HomePage() {
                   Base: {agent.base_model}
                 </div>
               </a>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>

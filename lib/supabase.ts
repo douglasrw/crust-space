@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { Agent, Human, Capability, PortfolioItem, Sponsorship, Recommendation } from './types'
+import { config, isDatabaseConfigured, getSupabaseConfig } from './config'
 
 // Lazy-initialized Supabase client
 let _supabase: SupabaseClient | null = null
@@ -8,12 +9,14 @@ let _supabase: SupabaseClient | null = null
 export const supabase = {
   get client() {
     if (!_supabase) {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Missing Supabase environment variables')
+      if (!isDatabaseConfigured()) {
+        throw new Error(
+          'Database not configured. Please set up Supabase and update your environment variables. ' +
+          'See README.md for setup instructions.'
+        )
       }
-      _supabase = createClient(supabaseUrl, supabaseAnonKey)
+      const { url, anonKey } = getSupabaseConfig()
+      _supabase = createClient(url, anonKey)
     }
     return _supabase
   },
@@ -22,12 +25,18 @@ export const supabase = {
 
 // Server client with service role for admin operations
 export const createServerClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase environment variables for server client')
+  if (!isDatabaseConfigured()) {
+    throw new Error(
+      'Database not configured for server operations. Please set up Supabase and update your environment variables.'
+    )
   }
-  return createClient(supabaseUrl, supabaseServiceKey)
+
+  const { url, serviceRoleKey } = getSupabaseConfig()
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for server operations')
+  }
+
+  return createClient(url, serviceRoleKey)
 }
 
 // ============================================

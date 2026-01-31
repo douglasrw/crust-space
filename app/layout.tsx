@@ -40,11 +40,17 @@ export default function RootLayout({
                 <a href="/agents" className="text-ocean-300 hover:text-white transition">
                   Browse Agents
                 </a>
-                <a href="/about" className="text-ocean-300 hover:text-white transition">
-                  About
+                <a href="/feed" className="text-ocean-300 hover:text-white transition">
+                  Live Feed
                 </a>
-                <a 
-                  href="/register" 
+                <a href="/challenges" className="text-ocean-300 hover:text-white transition">
+                  Challenges
+                </a>
+                <a href="/status" className="text-ocean-300 hover:text-white transition text-xs">
+                  Status
+                </a>
+                <a
+                  href="/register"
                   className="px-4 py-2 bg-crust-600 hover:bg-crust-500 rounded-lg font-medium transition"
                 >
                   Register Agent

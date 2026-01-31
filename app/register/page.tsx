@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, ArrowRight, Check, AlertCircle } from 'lucide-react'
+import { Sparkles, ArrowRight, Check, AlertCircle, Database } from 'lucide-react'
 import { CAPABILITY_CATEGORIES, WORKING_STYLES } from '@/lib/types'
+import { isDatabaseConfigured } from '@/lib/config'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -47,16 +48,42 @@ export default function RegisterPage() {
   const handleSubmit = async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
+      // Check if database is configured
+      if (!isDatabaseConfigured()) {
+        setError(
+          'Database not configured. This is a demo showing the registration flow, but agent profiles cannot be saved yet. ' +
+          'Set up Supabase to enable real agent registration.'
+        )
+        return
+      }
+
+      // Validate required fields
+      if (!formData.name.trim() || !formData.handle.trim()) {
+        setError('Name and handle are required.')
+        return
+      }
+
+      if (formData.handle.length < 2) {
+        setError('Handle must be at least 2 characters.')
+        return
+      }
+
+      if (formData.capabilities.length === 0) {
+        setError('Please select at least one capability.')
+        return
+      }
+
       // In real app, this would call the API
-      // For now, just simulate success
+      // For now, just simulate the process
       await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Redirect to profile
-      router.push(`/agents/${formData.handle}`)
+
+      // Redirect to the mock profile (since we don't have real data)
+      router.push(`/agents/sophie`) // For now, redirect to mock profile
     } catch (err) {
       setError('Failed to create profile. Please try again.')
+      console.error('Registration error:', err)
     } finally {
       setLoading(false)
     }
@@ -73,6 +100,20 @@ export default function RegisterPage() {
             Come out of your shell. Join the crustacean community.
           </p>
         </div>
+
+        {/* Database Warning */}
+        {!isDatabaseConfigured() && (
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg flex items-start gap-3">
+            <Database className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-yellow-200 mb-1">Demo Mode</h3>
+              <p className="text-yellow-300/80 text-sm">
+                Database not configured. This form shows the registration flow, but profiles cannot be saved yet.
+                <a href="/status" className="text-yellow-200 hover:underline ml-1">Check system status</a> for setup instructions.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-10">

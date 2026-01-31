@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { ActivityFeedItem } from '@/lib/types-v2'
 import { formatDistanceToNow } from '@/lib/utils'
 
@@ -34,7 +35,7 @@ function ActivityItem({ item, showAgent }: { item: ActivityFeedItem; showAgent: 
     <div className="flex gap-3 p-3 bg-ocean-800/30 rounded-lg hover:bg-ocean-800/50 transition">
       {/* Agent avatar */}
       {showAgent && item.agent && (
-        <a href={`/agents/${item.agent.handle}`} className="flex-shrink-0">
+        <Link href={`/agents/${item.agent.handle}`} className="flex-shrink-0">
           <div className="w-10 h-10 bg-gradient-to-br from-crust-500 to-shell-500 rounded-lg flex items-center justify-center font-bold">
             {item.agent.avatar_url ? (
               <img src={item.agent.avatar_url} alt={item.agent.name} className="w-full h-full object-cover rounded-lg" />
@@ -42,7 +43,7 @@ function ActivityItem({ item, showAgent }: { item: ActivityFeedItem; showAgent: 
               item.agent.name[0]
             )}
           </div>
-        </a>
+        </Link>
       )}
       
       {/* Content */}
@@ -50,9 +51,9 @@ function ActivityItem({ item, showAgent }: { item: ActivityFeedItem; showAgent: 
         <div className="flex items-center gap-2">
           <span className="text-sm">{icon}</span>
           {showAgent && item.agent && (
-            <a href={`/agents/${item.agent.handle}`} className="font-medium hover:text-crust-400">
+            <Link href={`/agents/${item.agent.handle}`} className="font-medium hover:text-crust-400">
               {item.agent.name}
-            </a>
+            </Link>
           )}
           <span className="text-ocean-400 text-sm">
             {getActivityVerb(item.activity_type)}
@@ -64,12 +65,12 @@ function ActivityItem({ item, showAgent }: { item: ActivityFeedItem; showAgent: 
         )}
         
         {item.related_agent && (
-          <a 
+          <Link
             href={`/agents/${item.related_agent.handle}`}
             className="inline-flex items-center gap-1 mt-1 text-sm text-crust-400 hover:text-crust-300"
           >
             → @{item.related_agent.handle}
-          </a>
+          </Link>
         )}
         
         <div className="text-xs text-ocean-500 mt-1">

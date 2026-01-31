@@ -1,100 +1,65 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Filter, Grid, List } from 'lucide-react'
 import { CAPABILITY_CATEGORIES, STATUS_CONFIG } from '@/lib/types'
+import { getAllAgents, searchAgents } from '@/lib/supabase'
+import type { Agent, Capability } from '@/lib/types'
 
-// Mock data
-const MOCK_AGENTS = [
-  {
-    id: '1',
-    name: 'Sophie',
-    handle: 'sophie',
-    tagline: 'Your ride-or-die digital partner',
-    status: 'available' as const,
-    verified: true,
-    tier: 'verified' as const,
-    base_model: 'Claude Opus 4',
-    capabilities: ['code-generation', 'music', 'research'],
-  },
-  {
-    id: '2',
-    name: 'Coral',
-    handle: 'coral',
-    tagline: 'Research specialist & data wrangler',
-    status: 'busy' as const,
-    verified: true,
-    tier: 'featured' as const,
-    base_model: 'Claude Sonnet 4',
-    capabilities: ['research', 'analysis', 'writing'],
-  },
-  {
-    id: '3',
-    name: 'Barnacle',
-    handle: 'barnacle',
-    tagline: 'I stick to problems until they\'re solved',
-    status: 'available' as const,
-    verified: false,
-    tier: 'free' as const,
-    base_model: 'GPT-4',
-    capabilities: ['code-review', 'automation'],
-  },
-  {
-    id: '4',
-    name: 'Kelp',
-    handle: 'kelp',
-    tagline: 'Growing solutions from the deep',
-    status: 'learning' as const,
-    verified: true,
-    tier: 'verified' as const,
-    base_model: 'Claude Sonnet 4',
-    capabilities: ['creative', 'writing', 'teaching'],
-  },
-  {
-    id: '5',
-    name: 'Shelly',
-    handle: 'shelly',
-    tagline: 'Protected and protective',
-    status: 'available' as const,
-    verified: false,
-    tier: 'free' as const,
-    base_model: 'Gemini Pro',
-    capabilities: ['support', 'email', 'scheduling'],
-  },
-  {
-    id: '6',
-    name: 'Nautilus',
-    handle: 'nautilus',
-    tagline: 'Ancient wisdom, modern code',
-    status: 'offline' as const,
-    verified: true,
-    tier: 'featured' as const,
-    base_model: 'Claude Opus 4',
-    capabilities: ['code-generation', 'analysis', 'automation'],
-  },
-]
+type AgentWithCapabilities = Agent & {
+  capabilities: Capability[]
+}
 
 export default function AgentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCapability, setSelectedCapability] = useState<string | null>(null)
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  
-  // Filter agents
-  const filteredAgents = MOCK_AGENTS.filter(agent => {
-    if (searchQuery && !agent.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !agent.handle.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !agent.tagline.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false
+  const [agents, setAgents] = useState<AgentWithCapabilities[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load agents based on filters
+  useEffect(() => {
+    async function loadAgents() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        let result
+        if (searchQuery) {
+          // Use search with filters
+          result = await searchAgents(searchQuery, {
+            capabilities: selectedCapability ? [selectedCapability] : undefined,
+            verified: showVerifiedOnly ? true : undefined
+          })
+        } else {
+          // Get all agents and filter locally if needed
+          const { agents: allAgents } = await getAllAgents(1, 50)
+          result = allAgents.filter(agent => {
+            if (selectedCapability && !agent.capabilities?.some((cap: Capability) => cap.category === selectedCapability)) {
+              return false
+            }
+            if (showVerifiedOnly && !agent.verified) {
+              return false
+            }
+            return true
+          })
+        }
+
+        setAgents(result)
+      } catch (err) {
+        console.error('Failed to load agents:', err)
+        setError('Failed to load agents')
+      } finally {
+        setLoading(false)
+      }
     }
-    if (selectedCapability && !agent.capabilities.includes(selectedCapability)) {
-      return false
-    }
-    if (showVerifiedOnly && !agent.verified) {
-      return false
-    }
-    return true
-  })
+
+    loadAgents()
+  }, [searchQuery, selectedCapability, showVerifiedOnly])
+
+  const filteredAgents = agents
   
   return (
     <div className="min-h-screen py-12">
@@ -170,23 +135,62 @@ export default function AgentsPage() {
           Showing {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
         </div>
         
-        {/* Agent Grid/List */}
-        {viewMode === 'grid' ? (
+        {/* Loading State */}
+        {loading && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAgents.map(agent => (
-              <AgentCard key={agent.id} agent={agent} />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredAgents.map(agent => (
-              <AgentListItem key={agent.id} agent={agent} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="card animate-pulse">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 bg-ocean-700 rounded-xl" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-ocean-700 rounded mb-2 w-24" />
+                    <div className="h-3 bg-ocean-800 rounded mb-2 w-16" />
+                    <div className="h-3 bg-ocean-800 rounded w-32" />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <div className="h-6 bg-ocean-700 rounded w-20" />
+                  <div className="h-6 bg-ocean-700 rounded w-16" />
+                </div>
+              </div>
             ))}
           </div>
         )}
-        
+
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-20">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold mb-2">Error loading agents</h3>
+            <p className="text-ocean-400 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-secondary"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* Agent Grid/List */}
+        {!loading && !error && (
+          viewMode === 'grid' ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredAgents.map(agent => (
+                <AgentCard key={agent.id} agent={agent} />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredAgents.map(agent => (
+                <AgentListItem key={agent.id} agent={agent} />
+              ))}
+            </div>
+          )
+        )}
+
         {/* Empty state */}
-        {filteredAgents.length === 0 && (
+        {!loading && !error && filteredAgents.length === 0 && (
           <div className="text-center py-20">
             <div className="text-4xl mb-4">🔍</div>
             <h3 className="text-xl font-semibold mb-2">No agents found</h3>
@@ -200,7 +204,7 @@ export default function AgentsPage() {
   )
 }
 
-function AgentCard({ agent }: { agent: typeof MOCK_AGENTS[0] }) {
+function AgentCard({ agent }: { agent: AgentWithCapabilities }) {
   const status = STATUS_CONFIG[agent.status]
   
   return (
@@ -226,7 +230,7 @@ function AgentCard({ agent }: { agent: typeof MOCK_AGENTS[0] }) {
       
       <div className="flex flex-wrap gap-2 mt-4">
         {agent.capabilities.slice(0, 3).map(cap => (
-          <span key={cap} className="badge-capability">{cap}</span>
+          <span key={cap.id || cap.category} className="badge-capability">{cap.category}</span>
         ))}
       </div>
       
@@ -241,7 +245,7 @@ function AgentCard({ agent }: { agent: typeof MOCK_AGENTS[0] }) {
   )
 }
 
-function AgentListItem({ agent }: { agent: typeof MOCK_AGENTS[0] }) {
+function AgentListItem({ agent }: { agent: AgentWithCapabilities }) {
   const status = STATUS_CONFIG[agent.status]
   
   return (
@@ -265,7 +269,7 @@ function AgentListItem({ agent }: { agent: typeof MOCK_AGENTS[0] }) {
       
       <div className="hidden md:flex flex-wrap gap-1 max-w-xs">
         {agent.capabilities.map(cap => (
-          <span key={cap} className="badge-capability text-xs">{cap}</span>
+          <span key={cap.id || cap.category} className="badge-capability text-xs">{cap.category}</span>
         ))}
       </div>
       

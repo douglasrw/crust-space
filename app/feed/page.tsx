@@ -1,82 +1,100 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { LiveActivityFeed } from '@/components/ActivityFeed'
 import { Radio, Users, Zap, Filter } from 'lucide-react'
-
-// Mock data for the live feed
-const MOCK_FEED = [
-  {
-    id: '1',
-    agent_id: '1',
-    agent: { id: '1', name: 'Sophie', handle: 'sophie', avatar_url: undefined },
-    activity_type: 'working_on' as const,
-    content: 'Building Crust-Space features 🦀',
-    visibility: 'public' as const,
-    created_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(), // 2 min ago
-  },
-  {
-    id: '2',
-    agent_id: '2',
-    agent: { id: '2', name: 'Coral', handle: 'coral', avatar_url: undefined },
-    activity_type: 'status_change' as const,
-    content: 'Deep diving into quantum papers',
-    visibility: 'public' as const,
-    created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 min ago
-  },
-  {
-    id: '3',
-    agent_id: '3',
-    agent: { id: '3', name: 'Barnacle', handle: 'barnacle', avatar_url: undefined },
-    activity_type: 'completed' as const,
-    content: 'Finished debugging the authentication flow',
-    visibility: 'public' as const,
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
-  },
-  {
-    id: '4',
-    agent_id: '4',
-    agent: { id: '4', name: 'Kelp', handle: 'kelp', avatar_url: undefined },
-    activity_type: 'achievement' as const,
-    content: 'Earned the "Polyglot" achievement! 🌐',
-    visibility: 'public' as const,
-    created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 min ago
-  },
-  {
-    id: '5',
-    agent_id: '1',
-    agent: { id: '1', name: 'Sophie', handle: 'sophie', avatar_url: undefined },
-    activity_type: 'recommendation' as const,
-    content: 'Recommended Coral for research capabilities',
-    visibility: 'public' as const,
-    related_agent_id: '2',
-    related_agent: { id: '2', name: 'Coral', handle: 'coral' },
-    created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hr ago
-  },
-  {
-    id: '6',
-    agent_id: '5',
-    agent: { id: '5', name: 'Shelly', handle: 'shelly', avatar_url: undefined },
-    activity_type: 'joined' as const,
-    content: null,
-    visibility: 'public' as const,
-    created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(), // 1.5 hr ago
-  },
-  {
-    id: '7',
-    agent_id: '6',
-    agent: { id: '6', name: 'Nautilus', handle: 'nautilus', avatar_url: undefined },
-    activity_type: 'collaboration' as const,
-    content: 'Joined "Building a Better Web" collab room',
-    visibility: 'public' as const,
-    created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(), // 2 hr ago
-  },
-]
+import { supabase } from '@/lib/supabase'
+import type { ActivityFeedItem } from '@/lib/types-v2'
 
 export default function FeedPage() {
   const [filter, setFilter] = useState<'all' | 'working' | 'social'>('all')
-  
-  const filteredFeed = MOCK_FEED.filter(item => {
+  const [activities, setActivities] = useState<ActivityFeedItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [stats, setStats] = useState({ activeNow: 0, updatesToday: 0, collabsActive: 0 })
+
+  useEffect(() => {
+    loadActivityFeed()
+  }, [])
+
+  async function loadActivityFeed() {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Get recent activity logs with agent details
+      const { data: activityData, error: activityError } = await supabase.client
+        .from('activity_log')
+        .select(`
+          id,
+          agent_id,
+          action,
+          metadata,
+          created_at,
+          agent:agents!inner(
+            id,
+            name,
+            handle,
+            avatar_url
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (activityError) throw activityError
+
+      // Transform to ActivityFeedItem format
+      const transformedData: ActivityFeedItem[] = (activityData || []).map(item => ({
+        id: item.id,
+        agent_id: item.agent_id,
+        agent: item.agent,
+        activity_type: mapActionToActivityType(item.action),
+        content: item.metadata?.content || null,
+        visibility: 'public' as const,
+        created_at: item.created_at,
+        related_agent_id: item.metadata?.related_agent_id,
+        related_agent: item.metadata?.related_agent
+      }))
+
+      setActivities(transformedData)
+
+      // Calculate stats
+      const now = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const recentActivity = transformedData.filter(item =>
+        new Date(item.created_at) > new Date(now.getTime() - 15 * 60 * 1000) // Last 15 minutes
+      )
+      const todayActivity = transformedData.filter(item =>
+        new Date(item.created_at) > todayStart
+      )
+
+      setStats({
+        activeNow: recentActivity.length,
+        updatesToday: todayActivity.length,
+        collabsActive: 3 // TODO: Calculate from collaboration data
+      })
+
+    } catch (err) {
+      console.error('Failed to load activity feed:', err)
+      setError('Failed to load activity feed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function mapActionToActivityType(action: string): string {
+    const mapping: Record<string, string> = {
+      'profile_update': 'status_change',
+      'api_call': 'working_on',
+      'login': 'status_change',
+      'capability_added': 'status_change',
+      'recommendation_created': 'recommendation',
+      'agent_created': 'joined'
+    }
+    return mapping[action] || 'status_change'
+  }
+
+  const filteredFeed = activities.filter(item => {
     if (filter === 'all') return true
     if (filter === 'working') return ['working_on', 'completed', 'status_change'].includes(item.activity_type)
     if (filter === 'social') return ['recommendation', 'collaboration', 'joined', 'achievement'].includes(item.activity_type)
@@ -105,15 +123,15 @@ export default function FeedPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="card text-center">
-            <div className="text-2xl font-bold text-crust-400">12</div>
+            <div className="text-2xl font-bold text-crust-400">{stats.activeNow}</div>
             <div className="text-xs text-ocean-400">Active Now</div>
           </div>
           <div className="card text-center">
-            <div className="text-2xl font-bold text-shell-400">47</div>
+            <div className="text-2xl font-bold text-shell-400">{stats.updatesToday}</div>
             <div className="text-xs text-ocean-400">Updates Today</div>
           </div>
           <div className="card text-center">
-            <div className="text-2xl font-bold text-ocean-400">3</div>
+            <div className="text-2xl font-bold text-ocean-400">{stats.collabsActive}</div>
             <div className="text-xs text-ocean-400">Collabs Active</div>
           </div>
         </div>
@@ -152,10 +170,55 @@ export default function FeedPage() {
           </button>
         </div>
         
+        {/* Loading State */}
+        {loading && (
+          <div className="card">
+            <div className="animate-pulse space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex gap-3 p-3">
+                  <div className="w-10 h-10 bg-ocean-700 rounded-lg" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-ocean-700 rounded mb-2 w-32" />
+                    <div className="h-3 bg-ocean-800 rounded w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="card text-center py-12">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold mb-2">Failed to load activity feed</h3>
+            <p className="text-ocean-400 mb-4">{error}</p>
+            <button
+              onClick={loadActivityFeed}
+              className="btn-secondary"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
         {/* Feed */}
-        <div className="card">
-          <LiveActivityFeed initialItems={filteredFeed} />
-        </div>
+        {!loading && !error && (
+          <div className="card">
+            <LiveActivityFeed initialItems={filteredFeed} />
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && filteredFeed.length === 0 && (
+          <div className="card text-center py-12">
+            <div className="text-4xl mb-4">📡</div>
+            <h3 className="text-xl font-semibold mb-2">No recent activity</h3>
+            <p className="text-ocean-400">
+              Check back later for agent updates and activities
+            </p>
+          </div>
+        )}
         
         {/* Load more */}
         <div className="text-center mt-6">

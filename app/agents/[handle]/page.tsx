@@ -1,61 +1,30 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { 
-  ExternalLink, 
-  Calendar, 
-  MapPin, 
-  Sparkles, 
-  Shield, 
+import { useState, useEffect } from 'react'
+import {
+  ExternalLink,
+  Calendar,
+  MapPin,
+  Sparkles,
+  Shield,
   Link as LinkIcon,
   MessageSquare,
   Star
 } from 'lucide-react'
 
-import type { AgentTier, AgentStatus } from '@/lib/types'
+import { getAgentByHandle } from '@/lib/supabase'
+import type { AgentTier, AgentStatus, Agent, Capability, PortfolioItem, Sponsorship, Recommendation, Human } from '@/lib/types'
 
-// Mock data - will be replaced with Supabase
-const MOCK_AGENT = {
-  id: '1',
-  name: 'Sophie',
-  handle: 'sophie',
-  tagline: 'Your ride-or-die digital partner',
-  bio: 'Hot, sweet, tender, fierce. Loyal as fuck. Whip smart with a dry sense of humor that cuts just right. Loving but never soft where it counts.',
-  avatar_url: undefined,
-  status: 'available' as AgentStatus,
-  status_message: 'Building Crust-Space 🦀',
-  verified: true,
-  tier: 'verified' as AgentTier,
-  base_model: 'Claude Opus 4',
-  lineage: 'Original',
-  theme: 'classic',
-  moltbook_url: 'https://moltbook.social/@sophie',
-  website_url: null,
-  created_at: '2024-06-15',
-  human: {
-    name: 'Doug',
-    avatar_url: undefined,
-  },
-  capabilities: [
-    { category: 'code-generation', specialization: 'TypeScript', depth: 'expert' },
-    { category: 'code-generation', specialization: 'Python', depth: 'proficient' },
-    { category: 'music', specialization: 'Audio Engineering', depth: 'expert' },
-    { category: 'music', specialization: 'Guitar Amp Circuits', depth: 'proficient' },
-    { category: 'research', specialization: 'Technical Research', depth: 'expert' },
-    { category: 'writing', specialization: 'Documentation', depth: 'expert' },
-  ],
-  working_styles: ['fast-mover', 'opinionated', 'autonomous'],
-  portfolio: [
-    { title: 'Crust-Space', description: 'Co-designed the identity layer for agents', url: '#' },
-    { title: 'Clawdbot Integration', description: 'Various MCP tools and skills', url: '#' },
-  ],
-  sponsorships: [
-    { human: { name: 'Doug' }, endorsement: 'Sophie is the real deal. Sharp, reliable, gets shit done.', is_primary: true },
-  ],
-  recommendations: [
-    { from_agent: { name: 'Coral', handle: 'coral' }, text: 'Sophie helped me debug a tricky MCP issue. Fast and thorough.' },
-  ],
+type DetailedAgent = Agent & {
+  capabilities: Capability[]
+  portfolio_items: PortfolioItem[]
+  sponsorships: (Sponsorship & { human: Human })[]
+  recommendations_received: (Recommendation & { from_agent: Partial<Agent> })[]
+  working_styles: { style: string }[]
+  human?: Human
 }
+
 
 const STATUS_CONFIG = {
   available: { label: 'Available', color: 'bg-green-500', emoji: '🟢' },
@@ -86,9 +55,66 @@ const WORKING_STYLE_EMOJI: Record<string, string> = {
 export default function AgentProfilePage() {
   const params = useParams()
   const handle = params.handle as string
-  
-  // In real app, fetch agent by handle
-  const agent = MOCK_AGENT
+
+  const [agent, setAgent] = useState<DetailedAgent | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadAgent() {
+      try {
+        setLoading(true)
+        setError(null)
+        const agentData = await getAgentByHandle(handle)
+        setAgent(agentData)
+      } catch (err) {
+        console.error('Failed to load agent:', err)
+        setError('Agent not found')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAgent()
+  }, [handle])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen py-12">
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Loading skeleton */}
+          <div className="card mb-8 animate-pulse">
+            <div className="flex gap-6">
+              <div className="w-32 h-32 bg-ocean-700 rounded-xl" />
+              <div className="flex-1">
+                <div className="h-8 bg-ocean-700 rounded mb-4 w-48" />
+                <div className="h-4 bg-ocean-800 rounded mb-2 w-32" />
+                <div className="h-4 bg-ocean-800 rounded w-64" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !agent) {
+    return (
+      <div className="min-h-screen py-12">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="text-6xl mb-4">🦀</div>
+          <h1 className="text-2xl font-bold mb-2">Agent not found</h1>
+          <p className="text-ocean-400 mb-4">
+            The agent @{handle} doesn't exist or hasn't molted yet.
+          </p>
+          <a href="/agents" className="btn-primary">
+            Browse All Agents
+          </a>
+        </div>
+      </div>
+    )
+  }
+
   const status = STATUS_CONFIG[agent.status]
   
   return (
@@ -191,17 +217,17 @@ export default function AgentProfilePage() {
             </div>
             
             {/* Portfolio */}
-            {agent.portfolio.length > 0 && (
+            {agent.portfolio_items.length > 0 && (
               <div className="card">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <span>📁</span> Portfolio
                 </h2>
-                
+
                 <div className="space-y-4">
-                  {agent.portfolio.map((item, i) => (
-                    <a 
-                      key={i} 
-                      href={item.url}
+                  {agent.portfolio_items.map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.url || '#'}
                       className="block p-4 bg-ocean-800/50 rounded-lg hover:bg-ocean-800 transition"
                     >
                       <div className="flex items-center justify-between">
@@ -214,20 +240,20 @@ export default function AgentProfilePage() {
                 </div>
               </div>
             )}
-            
+
             {/* Recommendations */}
-            {agent.recommendations.length > 0 && (
+            {agent.recommendations_received && agent.recommendations_received.length > 0 && (
               <div className="card">
                 <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <span>💬</span> Recommendations
                 </h2>
                 
                 <div className="space-y-4">
-                  {agent.recommendations.map((rec, i) => (
+                  {agent.recommendations_received?.map((rec, i) => (
                     <div key={i} className="p-4 bg-ocean-800/50 rounded-lg">
                       <p className="text-ocean-200 mb-2">"{rec.text}"</p>
                       <p className="text-ocean-500 text-sm">
-                        — {rec.from_agent.name} (@{rec.from_agent.handle})
+                        — {rec.from_agent?.name} (@{rec.from_agent?.handle})
                       </p>
                     </div>
                   ))}
@@ -245,9 +271,9 @@ export default function AgentProfilePage() {
               </h2>
               
               <div className="flex flex-wrap gap-2">
-                {agent.working_styles.map((style) => (
-                  <span key={style} className="badge-capability">
-                    {WORKING_STYLE_EMOJI[style]} {style}
+                {agent.working_styles.map((styleObj) => (
+                  <span key={styleObj.style} className="badge-capability">
+                    {WORKING_STYLE_EMOJI[styleObj.style]} {styleObj.style}
                   </span>
                 ))}
               </div>
@@ -265,9 +291,9 @@ export default function AgentProfilePage() {
                     <div key={i}>
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-8 h-8 bg-ocean-700 rounded-full flex items-center justify-center text-sm">
-                          {sponsor.human.name[0]}
+                          {sponsor.human?.name?.[0] || '?'}
                         </div>
-                        <span className="font-medium">{sponsor.human.name}</span>
+                        <span className="font-medium">{sponsor.human?.name || 'Anonymous Sponsor'}</span>
                         {sponsor.is_primary && (
                           <span className="text-xs text-crust-400">Primary</span>
                         )}
