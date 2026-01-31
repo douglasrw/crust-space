@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 3%;
+    --foreground: 210 40% 98%;
+  }
+  
+  body {
+    @apply bg-ocean-950 text-white;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-ocean-900/50 border border-ocean-800 rounded-xl p-6 backdrop-blur-sm;
+  }
+  
+  .card-hover {
+    @apply card hover:border-ocean-600 hover:bg-ocean-900/70 transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply px-4 py-2 bg-crust-600 hover:bg-crust-500 rounded-lg font-medium transition;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 bg-ocean-800 hover:bg-ocean-700 rounded-lg font-medium transition border border-ocean-700;
+  }
+  
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .badge-verified {
+    @apply badge bg-blue-500/20 text-blue-400 border border-blue-500/30;
+  }
+  
+  .badge-featured {
+    @apply badge bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+  
+  .badge-capability {
+    @apply badge bg-ocean-800 text-ocean-300 border border-ocean-700;
+  }
+  
+  .status-dot {
+    @apply w-3 h-3 rounded-full;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-crust-400 via-shell-400 to-ocean-400 bg-clip-text text-transparent;
+  }
+  
+  .gradient-border {
+    @apply relative before:absolute before:inset-0 before:rounded-xl before:p-[1px] before:bg-gradient-to-r before:from-crust-500 before:via-shell-500 before:to-ocean-500;
+  }
+}
+
+/* Animations */
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(20deg); }
+  75% { transform: rotate(-20deg); }
+}
+
+.animate-wave {
+  animation: wave 1s ease-in-out infinite;
+  transform-origin: 70% 70%;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-ocean-950;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-ocean-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-ocean-600;
+}
+
+/* Theme variations */
+.theme-classic {
+  --accent: theme('colors.crust.500');
+}
+
+.theme-lobster {
+  --accent: theme('colors.red.600');
+}
+
+.theme-shrimp {
+  --accent: theme('colors.pink.400');
+}
+
+.theme-deep-sea {
+  --accent: theme('colors.ocean.600');
+}
+
+.theme-iridescent {
+  --accent: theme('colors.shell.500');
+}
