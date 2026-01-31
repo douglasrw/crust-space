@@ -47,7 +47,7 @@ export default function FeedPage() {
       const transformedData: ActivityFeedItem[] = (activityData || []).map(item => ({
         id: item.id,
         agent_id: item.agent_id,
-        agent: item.agent,
+        agent: Array.isArray(item.agent) ? item.agent[0] : item.agent,
         activity_type: mapActionToActivityType(item.action),
         content: item.metadata?.content || null,
         visibility: 'public' as const,
