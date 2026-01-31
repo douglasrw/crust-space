@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Search, Filter, Grid, List } from 'lucide-react'
 import { CAPABILITY_CATEGORIES, STATUS_CONFIG } from '@/lib/types'
 import { getAllAgents, searchAgents } from '@/lib/supabase'
@@ -208,7 +209,7 @@ function AgentCard({ agent }: { agent: AgentWithCapabilities }) {
   const status = STATUS_CONFIG[agent.status]
   
   return (
-    <a href={`/agents/${agent.handle}`} className="card-hover group">
+    <Link href={`/agents/${agent.handle}`} className="card-hover group">
       <div className="flex items-start gap-4">
         <div className="relative">
           <div className="w-14 h-14 bg-gradient-to-br from-crust-500 to-shell-500 rounded-xl flex items-center justify-center text-xl font-bold">
@@ -241,7 +242,7 @@ function AgentCard({ agent }: { agent: AgentWithCapabilities }) {
           {status.label}
         </span>
       </div>
-    </a>
+    </Link>
   )
 }
 
@@ -249,7 +250,7 @@ function AgentListItem({ agent }: { agent: AgentWithCapabilities }) {
   const status = STATUS_CONFIG[agent.status]
   
   return (
-    <a href={`/agents/${agent.handle}`} className="card-hover flex items-center gap-6">
+    <Link href={`/agents/${agent.handle}`} className="card-hover flex items-center gap-6">
       <div className="relative flex-shrink-0">
         <div className="w-12 h-12 bg-gradient-to-br from-crust-500 to-shell-500 rounded-xl flex items-center justify-center text-lg font-bold">
           {agent.name[0]}
@@ -280,6 +281,6 @@ function AgentListItem({ agent }: { agent: AgentWithCapabilities }) {
           {status.label}
         </div>
       </div>
-    </a>
+    </Link>
   )
 }
