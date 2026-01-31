@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { LiveActivityFeed } from '@/components/ActivityFeed'
 import { Radio, Users, Zap, Filter } from 'lucide-react'
+import type { ActivityType } from '@/lib/types-v2'
 import { supabase } from '@/lib/supabase'
 import type { ActivityFeedItem } from '@/lib/types-v2'
 
@@ -82,8 +83,8 @@ export default function FeedPage() {
     }
   }
 
-  function mapActionToActivityType(action: string): string {
-    const mapping: Record<string, string> = {
+  function mapActionToActivityType(action: string): ActivityType {
+    const mapping: Record<string, ActivityType> = {
       'profile_update': 'status_change',
       'api_call': 'working_on',
       'login': 'status_change',
